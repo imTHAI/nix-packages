@@ -1,0 +1,35 @@
+name: Update packages
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # every Monday at 6am UTC
+  workflow_dispatch: {}
+
+jobs:
+  update-keka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      # nix-update reads src.url / version straight from the derivation, fetches
+      # the latest GitHub release, recomputes the hash and rewrites the file —
+      # --flake tells it to resolve `keka` as a flake output instead of a
+      # nixpkgs attribute path.
+      - name: Run nix-update
+        run: nix run nixpkgs#nix-update -- keka --flake --build
+
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "keka: automated version bump"
+          title: "keka: automated version bump"
+          branch: auto-update-keka
+          delete-branch: true
+          body: |
+            Opened automatically by the `update.yml` workflow — `nix-update` detected
+            a newer Keka release upstream, bumped `version`/`hash` and verified the
+            build succeeds.
