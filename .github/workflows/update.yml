@@ -24,6 +24,7 @@ jobs:
         run: nix run nixpkgs#nix-update -- keka --flake --build
 
       - uses: peter-evans/create-pull-request@v6
+        id: cpr
         with:
           commit-message: "keka: automated version bump"
           title: "keka: automated version bump"
@@ -33,3 +34,22 @@ jobs:
             Opened automatically by the `update.yml` workflow — `nix-update` detected
             a newer Keka release upstream, bumped `version`/`hash` and verified the
             build succeeds.
+
+      # Always reports — success (PR opened or nothing to do) or failure — so a
+      # silent breakage upstream (e.g. nix-update can't parse a new release format)
+      # doesn't go unnoticed for weeks.
+      - name: Report to Discord
+        if: always()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "${{ job.status }}" != "success" ]; then
+            content="❌ **nix-packages: keka update check failed** — see [run details]($RUN_URL)"
+          elif [ -n "${{ steps.cpr.outputs.pull-request-number }}" ]; then
+            content="📦 **keka update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
+          else
+            content="✅ **keka is up to date** — nothing to do this week."
+          fi
+          payload=$(jq -n --arg content "$content" '{content: $content}')
+          curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
