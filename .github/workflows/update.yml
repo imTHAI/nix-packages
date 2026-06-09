@@ -7,9 +7,8 @@ on:
 
 jobs:
   update-keka:
-    # keka.meta.platforms is darwin-only — `nix-update --build` needs a
-    # darwin builder to evaluate/build the derivation, Linux runners refuse
-    # with "Refusing to evaluate package ... not available on hostPlatform".
+    # keka.meta.platforms is darwin-only — nix-update --build needs a darwin
+    # builder; Linux runners refuse with "not available on hostPlatform".
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,17 +16,26 @@ jobs:
       # DeterminateSystems installer handles macOS runners correctly —
       # cachix/install-nix-action fails with eDSRecordAlreadyExists because
       # the GitHub macOS image already has _nixbld users. DS installer also
-      # enables flakes by default so no extra_nix_config needed.
+      # enables flakes by default.
       - uses: DeterminateSystems/nix-installer-action@v14
 
       # nix-update reads src.url / version straight from the derivation, fetches
-      # the latest GitHub release, recomputes the hash and rewrites the file —
-      # --flake tells it to resolve `keka` as a flake output instead of a
-      # nixpkgs attribute path.
+      # the latest GitHub release, recomputes the hash and rewrites the file.
+      # --flake resolves `keka` as a flake output instead of a nixpkgs path.
+      # We capture whether any file was actually modified so downstream steps
+      # can gate on real changes rather than running unconditionally.
       - name: Run nix-update
-        run: nix run nixpkgs#nix-update -- keka --flake --build
+        id: nix-update
+        run: |
+          nix run nixpkgs#nix-update -- keka --flake --build
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: peter-evans/create-pull-request@v6
+        if: steps.nix-update.outputs.changed == 'true'
         id: cpr
         with:
           commit-message: "keka: automated version bump"
@@ -50,7 +58,7 @@ jobs:
         run: |
           if [ "${{ job.status }}" != "success" ]; then
             content="❌ **nix-packages: keka update check failed** — see [run details]($RUN_URL)"
-          elif [ -n "${{ steps.cpr.outputs.pull-request-number }}" ]; then
+          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
             content="📦 **keka update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
           else
             content="✅ **keka is up to date** — nothing to do this week."
