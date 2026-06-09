@@ -14,10 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+      # DeterminateSystems installer handles macOS runners correctly —
+      # cachix/install-nix-action fails with eDSRecordAlreadyExists because
+      # the GitHub macOS image already has _nixbld users. DS installer also
+      # enables flakes by default so no extra_nix_config needed.
+      - uses: DeterminateSystems/nix-installer-action@v14
 
       # nix-update reads src.url / version straight from the derivation, fetches
       # the latest GitHub release, recomputes the hash and rewrites the file —
