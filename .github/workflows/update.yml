@@ -75,3 +75,54 @@ jobs:
           fi
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
+
+  update-supacode:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v14
+
+      - name: Run nix-update
+        id: nix-update
+        run: |
+          nix run nixpkgs#nix-update -- supacode --flake --build
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update README version
+        if: steps.nix-update.outputs.changed == 'true'
+        run: |
+          NEW_VERSION=$(grep -m1 'version = ' pkgs/supacode/package.nix | grep -o '"[^"]*"' | tr -d '"')
+          sed -i '' "/pkgs\/supacode/s/\`[0-9][0-9.]*\`/\`${NEW_VERSION}\`/" README.md
+
+      - uses: peter-evans/create-pull-request@v6
+        if: steps.nix-update.outputs.changed == 'true'
+        id: cpr
+        with:
+          commit-message: "supacode: automated version bump"
+          title: "supacode: automated version bump"
+          branch: auto-update-supacode
+          delete-branch: true
+          body: |
+            Opened automatically by the `update.yml` workflow — `nix-update` detected
+            a newer Supacode release upstream, bumped `version`/`hash` and verified the
+            build succeeds.
+
+      - name: Report to Discord
+        if: always()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "${{ job.status }}" != "success" ]; then
+            content="❌ **nix-packages: supacode update check failed** — see [run details]($RUN_URL)"
+          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
+            content="📦 **supacode update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
+          else
+            content="✅ **supacode is up to date** — nothing to do this week."
+          fi
+          payload=$(jq -n --arg content "$content" '{content: $content}')
+          curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"

@@ -14,11 +14,12 @@
           # propagates here. Allowlist by name instead of blanket-allowing unfree.
           pkgs = import nixpkgs {
             inherit system;
-            config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "keka" ];
+            config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "keka" "supacode" ];
           };
           inherit (nixpkgs) lib;
         in {
           keka = pkgs.callPackage ./pkgs/keka/package.nix { };
+          supacode = pkgs.callPackage ./pkgs/supacode/package.nix { };
         });
     };
 }
