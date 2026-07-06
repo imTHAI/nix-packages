@@ -1,0 +1,3 @@
+# nix build output symlink — must not end up in version-bump PRs
+# (create-pull-request does `git add -A`)
+result
