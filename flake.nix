@@ -19,6 +19,7 @@
           inherit (nixpkgs) lib;
         in {
           keka = pkgs.callPackage ./pkgs/keka/package.nix { };
+          hipixel = pkgs.callPackage ./pkgs/hipixel/package.nix { };
           supacode = pkgs.callPackage ./pkgs/supacode/package.nix { };
         });
     };
