@@ -37,3 +37,13 @@ environment.systemPackages = [
 Each `package.nix` mirrors the `pkgs/by-name/` convention used by nixpkgs itself, so a package here is nearly a drop-in diff if it's ever worth upstreaming.
 
 A [scheduled GitHub Action](./.github/workflows/update.yml) runs [`nix-update`](https://github.com/Mic92/nix-update) every Monday, rebuilds to confirm the new version works, and opens a PR whenever a newer upstream release shows up — so version bumps stay a reviewable diff, not a silent push. 🤖
+
+## ➕ Adding a package
+
+1. Create `pkgs/<name>/package.nix` (follow an existing package as a template).
+2. Wire it up as a flake output in `flake.nix`.
+3. Add a row to the table in [📋 Packages](#-packages) above.
+4. **Push a new tag** (`vX.Y.Z`) — [`flakehub-publish-tagged.yml`](./.github/workflows/flakehub-publish-tagged.yml)
+   only runs on tag push, *not* on every commit to `master`. Skip this and the
+   package silently won't show up on [FlakeHub](https://flakehub.com/flake/imTHAI/nix-packages)
+   even though `master` already has it.
