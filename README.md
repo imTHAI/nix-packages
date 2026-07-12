@@ -43,7 +43,12 @@ A [scheduled GitHub Action](./.github/workflows/update.yml) runs [`nix-update`](
 1. Create `pkgs/<name>/package.nix` (follow an existing package as a template).
 2. Wire it up as a flake output in `flake.nix`.
 3. Add a row to the table in [📋 Packages](#-packages) above.
-4. **Push a new tag** (`vX.Y.Z`) — [`flakehub-publish-tagged.yml`](./.github/workflows/flakehub-publish-tagged.yml)
-   only runs on tag push, *not* on every commit to `master`. Skip this and the
-   package silently won't show up on [FlakeHub](https://flakehub.com/flake/imTHAI/nix-packages)
-   even though `master` already has it.
+4. That's it — [`flakehub-publish-rolling.yml`](./.github/workflows/flakehub-publish-rolling.yml)
+   auto-publishes a rolling release to [FlakeHub](https://flakehub.com/flake/imTHAI/nix-packages)
+   on every push to `master` that touches `pkgs/**`, `flake.nix`, or `flake.lock` —
+   no manual tag needed for day-to-day updates.
+
+   A manual `git tag vX.Y.Z` (pushed) still triggers
+   [`flakehub-publish-tagged.yml`](./.github/workflows/flakehub-publish-tagged.yml) for a
+   pinned, semantic-versioned release — use that when you want a stable
+   reference point instead of tracking the rolling head.

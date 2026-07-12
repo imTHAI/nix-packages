@@ -1,0 +1,35 @@
+name: "Publish rolling release to FlakeHub"
+
+# Semantic tags (flakehub-publish-tagged.yml) require a manual `git tag` push,
+# which is easy to forget after an auto-merged version-bump PR — FlakeHub then
+# silently drifts behind `master` with no signal. This workflow closes that
+# gap by publishing a rolling release (versioned `0.1.<commit count>+rev-<sha>`)
+# on every push to master, so FlakeHub always reflects the latest commit
+# regardless of whether anyone remembered to tag.
+on:
+  push:
+    branches:
+      - "master"
+    paths:
+      - "pkgs/**"
+      - "flake.nix"
+      - "flake.lock"
+  workflow_dispatch: {}
+
+jobs:
+  flakehub-publish:
+    runs-on: "ubuntu-latest"
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: "actions/checkout@v6"
+        with:
+          persist-credentials: false
+      - uses: "DeterminateSystems/determinate-nix-action@v3"
+      - uses: "DeterminateSystems/flakehub-push@main"
+        with:
+          visibility: "public"
+          name: "imTHAI/nix-packages"
+          rolling: true
+          include-output-paths: true
