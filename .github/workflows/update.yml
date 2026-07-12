@@ -2,7 +2,11 @@ name: Update packages
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # every Monday at 6am UTC
+    # Day-of-month step (*/2) rather than a day-count interval, so this
+    # fires on odd days (~every 2 days; occasionally 1 or 3 days apart
+    # across a month boundary). Public repo => Actions minutes are free,
+    # including macOS runners, so the tighter cadence costs nothing.
+    - cron: "0 6 */2 * *"
   workflow_dispatch: {}
 
 # The repo default GITHUB_TOKEN is read-only; create-pull-request needs
@@ -79,7 +83,59 @@ jobs:
           elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
             content="📦 **keka update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
           else
-            content="✅ **keka is up to date** — nothing to do this week."
+            content="✅ **keka is up to date** — nothing to do this run."
+          fi
+          payload=$(jq -n --arg content "$content" '{content: $content}')
+          curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
+
+  update-hipixel:
+    # hipixel.meta.platforms is darwin-only, same reasoning as update-keka above.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v14
+
+      - name: Run nix-update
+        id: nix-update
+        run: |
+          nix run nixpkgs#nix-update -- hipixel --flake --build
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update README version
+        if: steps.nix-update.outputs.changed == 'true'
+        run: |
+          NEW_VERSION=$(grep -m1 'version = ' pkgs/hipixel/package.nix | grep -o '"[^"]*"' | tr -d '"')
+          sed -i '' "/pkgs\/hipixel/s/\`[0-9][0-9.]*\`/\`${NEW_VERSION}\`/" README.md
+
+      - uses: peter-evans/create-pull-request@v6
+        if: steps.nix-update.outputs.changed == 'true'
+        id: cpr
+        with:
+          commit-message: "hipixel: automated version bump"
+          title: "hipixel: automated version bump"
+          branch: auto-update-hipixel
+          delete-branch: true
+          body: |
+            Opened automatically by the `update.yml` workflow — `nix-update` detected
+            a newer HiPixel release upstream, bumped `version`/`hash` and verified the
+            build succeeds.
+
+      - name: Report to Discord
+        if: always()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "${{ job.status }}" != "success" ]; then
+            content="❌ **nix-packages: hipixel update check failed** — see [run details]($RUN_URL)"
+          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
+            content="📦 **hipixel update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
+          else
+            content="✅ **hipixel is up to date** — nothing to do this run."
           fi
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
@@ -130,7 +186,7 @@ jobs:
           elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
             content="📦 **supacode update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
           else
-            content="✅ **supacode is up to date** — nothing to do this week."
+            content="✅ **supacode is up to date** — nothing to do this run."
           fi
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
