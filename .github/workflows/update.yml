@@ -22,6 +22,8 @@ jobs:
     # keka.meta.platforms is darwin-only — nix-update --build needs a darwin
     # builder; Linux runners refuse with "not available on hostPlatform".
     runs-on: macos-latest
+    outputs:
+      changed: ${{ steps.nix-update.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -69,7 +71,17 @@ jobs:
             a newer Keka release upstream, bumped `version`/`hash` and verified the
             build succeeds.
 
-      # Always reports — success (PR opened or nothing to do) or failure — so a
+      # The build already ran (and had to succeed) inside the "Run nix-update"
+      # step above, before this PR even existed — there's no further check
+      # left to wait on, so merge immediately rather than via GitHub's
+      # "auto-merge" (which would just poll for the same already-true result).
+      - name: Merge PR
+        if: steps.nix-update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
+
+      # Always reports — success (PR merged or nothing to do) or failure — so a
       # silent breakage upstream (e.g. nix-update can't parse a new release format)
       # doesn't go unnoticed for weeks.
       - name: Report to Discord
@@ -81,7 +93,7 @@ jobs:
           if [ "${{ job.status }}" != "success" ]; then
             content="❌ **nix-packages: keka update check failed** — see [run details]($RUN_URL)"
           elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
-            content="📦 **keka update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
+            content="📦 **keka bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
           else
             content="✅ **keka is up to date** — nothing to do this run."
           fi
@@ -91,6 +103,8 @@ jobs:
   update-hipixel:
     # hipixel.meta.platforms is darwin-only, same reasoning as update-keka above.
     runs-on: macos-latest
+    outputs:
+      changed: ${{ steps.nix-update.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v14
@@ -124,6 +138,12 @@ jobs:
             a newer HiPixel release upstream, bumped `version`/`hash` and verified the
             build succeeds.
 
+      - name: Merge PR
+        if: steps.nix-update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
+
       - name: Report to Discord
         if: always()
         env:
@@ -133,7 +153,7 @@ jobs:
           if [ "${{ job.status }}" != "success" ]; then
             content="❌ **nix-packages: hipixel update check failed** — see [run details]($RUN_URL)"
           elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
-            content="📦 **hipixel update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
+            content="📦 **hipixel bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
           else
             content="✅ **hipixel is up to date** — nothing to do this run."
           fi
@@ -142,6 +162,8 @@ jobs:
 
   update-supacode:
     runs-on: macos-latest
+    outputs:
+      changed: ${{ steps.nix-update.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v14
@@ -175,6 +197,12 @@ jobs:
             a newer Supacode release upstream, bumped `version`/`hash` and verified the
             build succeeds.
 
+      - name: Merge PR
+        if: steps.nix-update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
+
       - name: Report to Discord
         if: always()
         env:
@@ -184,9 +212,37 @@ jobs:
           if [ "${{ job.status }}" != "success" ]; then
             content="❌ **nix-packages: supacode update check failed** — see [run details]($RUN_URL)"
           elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
-            content="📦 **supacode update available** — PR #${{ steps.cpr.outputs.pull-request-number }} opened: ${{ steps.cpr.outputs.pull-request-url }}"
+            content="📦 **supacode bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
           else
             content="✅ **supacode is up to date** — nothing to do this run."
           fi
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
+
+  # Pushes/merges made with the built-in GITHUB_TOKEN deliberately don't
+  # trigger other workflows (GitHub's anti-recursion rule) — so the merges
+  # above land on master but never fire flakehub-publish-rolling.yml's
+  # `on: push` trigger. Publish explicitly here instead, once per run,
+  # covering whichever package(s) actually got bumped.
+  flakehub-publish:
+    needs: [update-keka, update-hipixel, update-supacode]
+    if: |
+      always() &&
+      (needs.update-keka.outputs.changed == 'true' ||
+       needs.update-hipixel.outputs.changed == 'true' ||
+       needs.update-supacode.outputs.changed == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-push@main
+        with:
+          visibility: "public"
+          name: "imTHAI/nix-packages"
+          rolling: true
+          include-output-paths: true
