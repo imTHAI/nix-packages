@@ -13,6 +13,7 @@ Rather than pile up local overlay overrides or wait on someone else's schedule, 
 |---|---|---|---|
 | [`keka`](./pkgs/keka) | `1.6.7` | [`1.6.0`](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ke/keka/package.nix) | several patch releases behind, no auto-update mechanism upstream |
 | [`hipixel`](./pkgs/hipixel) | `0.4.3` | not in nixpkgs | niche macOS-only app, not worth the nixpkgs review cycle |
+| [`mist`](./pkgs/mist) | `0.40` | not in nixpkgs | niche macOS-only app, not worth the nixpkgs review cycle |
 | [`supacode`](./pkgs/supacode) | `0.10.6` | not in nixpkgs | frequent releases during beta phase, not suited for nixpkgs review cycle |
 
 ## 🚀 Usage
@@ -36,7 +37,7 @@ environment.systemPackages = [
 
 Each `package.nix` mirrors the `pkgs/by-name/` convention used by nixpkgs itself, so a package here is nearly a drop-in diff if it's ever worth upstreaming.
 
-A [scheduled GitHub Action](./.github/workflows/update.yml) runs [`nix-update`](https://github.com/Mic92/nix-update) every Monday, rebuilds to confirm the new version works, and opens a PR whenever a newer upstream release shows up — so version bumps stay a reviewable diff, not a silent push. 🤖
+A [scheduled GitHub Action](./.github/workflows/update.yml) runs [`nix-update`](https://github.com/Mic92/nix-update) every 2 days, rebuilds to confirm the new version works, and auto-merges a PR whenever a newer upstream release shows up — so version bumps stay a reviewable diff (in the PR history), not a silent force-push. 🤖
 
 ## ➕ Adding a package
 
