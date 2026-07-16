@@ -13,7 +13,7 @@ Rather than pile up local overlay overrides or wait on someone else's schedule, 
 |---|---|---|---|
 | [`keka`](./pkgs/keka) | `1.6.7` | [`1.6.0`](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ke/keka/package.nix) | several patch releases behind, no auto-update mechanism upstream |
 | [`hipixel`](./pkgs/hipixel) | `0.4.3` | not in nixpkgs | niche macOS-only app, not worth the nixpkgs review cycle |
-| [`mist`](./pkgs/mist) | `0.40` | not in nixpkgs | niche macOS-only app, not worth the nixpkgs review cycle |
+| [`mist`](./pkgs/mist) | `0.40` | [`0.30`](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/mi/mist/package.nix) | several releases behind, no auto-update mechanism upstream |
 | [`supacode`](./pkgs/supacode) | `0.10.6` | not in nixpkgs | frequent releases during beta phase, not suited for nixpkgs review cycle |
 
 ## 🚀 Usage
