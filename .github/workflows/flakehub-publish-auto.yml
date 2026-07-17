@@ -1,0 +1,61 @@
+name: "Auto-tag and publish to FlakeHub"
+
+# Previously this published FlakeHub "rolling" releases (0.1.x) on every push.
+# Rolling releases never win FlakeHub's "latest" resolution once a real semver
+# tag exists — FlakeHub picks the highest semver, not the most recent publish —
+# so a manual tag like v0.3.0 silently and *permanently* shadowed every rolling
+# release pushed after it, even though those kept publishing successfully
+# under the hood. Auto-creating a real, monotonically increasing patch tag
+# instead means a publish here can never be shadowed by an earlier tag again.
+on:
+  push:
+    branches:
+      - "master"
+    paths:
+      - "pkgs/**"
+      - "flake.nix"
+      - "flake.lock"
+  workflow_dispatch: {}
+
+jobs:
+  tag-and-publish:
+    runs-on: "ubuntu-latest"
+    permissions:
+      id-token: "write"
+      contents: "write"
+    steps:
+      - uses: "actions/checkout@v6"
+        with:
+          fetch-depth: 0
+
+      - name: Compute next patch tag
+        id: next-tag
+        run: |
+          git fetch --tags
+          latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -1)
+          if [ -z "$latest" ]; then
+            new_tag="v0.1.0"
+          else
+            IFS='.' read -r major minor patch <<< "${latest#v}"
+            new_tag="v${major}.${minor}.$((patch + 1))"
+          fi
+          echo "tag=$new_tag" >> "$GITHUB_OUTPUT"
+
+      # Pushed with the default GITHUB_TOKEN, so this tag push won't itself
+      # trigger flakehub-publish-tagged.yml's `on: push: tags` (GitHub's
+      # anti-recursion rule) — that's fine, we call flakehub-push directly
+      # below instead of depending on that trigger.
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.next-tag.outputs.tag }}" -m "auto: publish ${{ steps.next-tag.outputs.tag }}"
+          git push origin "${{ steps.next-tag.outputs.tag }}"
+
+      - uses: "DeterminateSystems/determinate-nix-action@v3"
+      - uses: "DeterminateSystems/flakehub-push@main"
+        with:
+          visibility: "public"
+          name: "imTHAI/nix-packages"
+          tag: "${{ steps.next-tag.outputs.tag }}"
+          include-output-paths: true

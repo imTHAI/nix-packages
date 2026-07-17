@@ -281,9 +281,15 @@ jobs:
 
   # Pushes/merges made with the built-in GITHUB_TOKEN deliberately don't
   # trigger other workflows (GitHub's anti-recursion rule) — so the merges
-  # above land on master but never fire flakehub-publish-rolling.yml's
+  # above land on master but never fire flakehub-publish-auto.yml's
   # `on: push` trigger. Publish explicitly here instead, once per run,
   # covering whichever package(s) actually got bumped.
+  #
+  # This auto-tags rather than publishing a "rolling" release: rolling
+  # releases (0.1.x) never win FlakeHub's "latest" resolution once a real
+  # semver tag exists (highest semver wins, not most recent publish), so they
+  # can end up permanently invisible behind an old tag. See
+  # flakehub-publish-auto.yml for the full story.
   flakehub-publish:
     needs: [update-keka, update-hipixel, update-mist, update-supacode]
     if: |
@@ -295,15 +301,37 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: master
+          fetch-depth: 0
+
+      - name: Compute next patch tag
+        id: next-tag
+        run: |
+          git fetch --tags
+          latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -1)
+          if [ -z "$latest" ]; then
+            new_tag="v0.1.0"
+          else
+            IFS='.' read -r major minor patch <<< "${latest#v}"
+            new_tag="v${major}.${minor}.$((patch + 1))"
+          fi
+          echo "tag=$new_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.next-tag.outputs.tag }}" -m "auto: publish ${{ steps.next-tag.outputs.tag }}"
+          git push origin "${{ steps.next-tag.outputs.tag }}"
+
       - uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-push@main
         with:
           visibility: "public"
           name: "imTHAI/nix-packages"
-          rolling: true
+          tag: "${{ steps.next-tag.outputs.tag }}"
           include-output-paths: true

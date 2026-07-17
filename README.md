@@ -44,12 +44,24 @@ A [scheduled GitHub Action](./.github/workflows/update.yml) runs [`nix-update`](
 1. Create `pkgs/<name>/package.nix` (follow an existing package as a template).
 2. Wire it up as a flake output in `flake.nix`.
 3. Add a row to the table in [📋 Packages](#-packages) above.
-4. That's it — [`flakehub-publish-rolling.yml`](./.github/workflows/flakehub-publish-rolling.yml)
-   auto-publishes a rolling release to [FlakeHub](https://flakehub.com/flake/imTHAI/nix-packages)
-   on every push to `master` that touches `pkgs/**`, `flake.nix`, or `flake.lock` —
-   no manual tag needed for day-to-day updates.
+4. That's it — [`flakehub-publish-auto.yml`](./.github/workflows/flakehub-publish-auto.yml)
+   auto-tags (`vX.Y.Z` patch bump) and publishes to
+   [FlakeHub](https://flakehub.com/flake/imTHAI/nix-packages) on every push to `master`
+   that touches `pkgs/**`, `flake.nix`, or `flake.lock` — no manual tag needed.
 
-   A manual `git tag vX.Y.Z` (pushed) still triggers
-   [`flakehub-publish-tagged.yml`](./.github/workflows/flakehub-publish-tagged.yml) for a
-   pinned, semantic-versioned release — use that when you want a stable
-   reference point instead of tracking the rolling head.
+   A manual `git tag vX.Y.Z` (pushed) still works too and triggers
+   [`flakehub-publish-tagged.yml`](./.github/workflows/flakehub-publish-tagged.yml) directly —
+   useful if you want to jump a minor/major version rather than a patch bump.
+
+> [!WARNING]
+> Don't switch this back to a FlakeHub **rolling** release (`rolling: true` on
+> `flakehub-push`). Rolling releases version themselves `0.1.<commit-count>`,
+> and FlakeHub's "latest" resolution picks the *highest semver*, not the most
+> recent publish. Once any real tag ≥ `0.2.0` exists, every rolling release
+> published after it is permanently invisible under `flakehub:imTHAI/nix-packages`
+> (no version pinned) — it silently shows the old tag forever, even though the
+> rolling release itself published fine. This bit us in July 2026: `mist` was
+> fully published and buildable via an explicit rolling version, but invisible
+> by default because `v0.3.0` outranked it. Auto-tagging is what avoids this
+> — every publish here is a real, monotonically increasing semver tag, so it
+> always wins "latest".
