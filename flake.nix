@@ -22,6 +22,7 @@
           hipixel = pkgs.callPackage ./pkgs/hipixel/package.nix { };
           mist = pkgs.callPackage ./pkgs/mist/package.nix { };
           supacode = pkgs.callPackage ./pkgs/supacode/package.nix { };
+          cmux = pkgs.callPackage ./pkgs/cmux/package.nix { };
         });
     };
 }

@@ -279,6 +279,65 @@ jobs:
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
 
+  update-cmux:
+    runs-on: macos-latest
+    outputs:
+      changed: ${{ steps.nix-update.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v14
+
+      - name: Run nix-update
+        id: nix-update
+        run: |
+          nix run nixpkgs#nix-update -- cmux --flake --build
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update README version
+        if: steps.nix-update.outputs.changed == 'true'
+        run: |
+          NEW_VERSION=$(grep -m1 'version = ' pkgs/cmux/package.nix | grep -o '"[^"]*"' | tr -d '"')
+          sed -i '' "/pkgs\/cmux/s/\`[0-9][0-9.]*\`/\`${NEW_VERSION}\`/" README.md
+
+      - uses: peter-evans/create-pull-request@v6
+        if: steps.nix-update.outputs.changed == 'true'
+        id: cpr
+        with:
+          commit-message: "cmux: automated version bump"
+          title: "cmux: automated version bump"
+          branch: auto-update-cmux
+          delete-branch: true
+          body: |
+            Opened automatically by the `update.yml` workflow — `nix-update` detected
+            a newer cmux release upstream, bumped `version`/`hash` and verified the
+            build succeeds.
+
+      - name: Merge PR
+        if: steps.nix-update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
+
+      - name: Report to Discord
+        if: always()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "${{ job.status }}" != "success" ]; then
+            content="❌ **nix-packages: cmux update check failed** — see [run details]($RUN_URL)"
+          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
+            content="📦 **cmux bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
+          else
+            content="✅ **cmux is up to date** — nothing to do this run."
+          fi
+          payload=$(jq -n --arg content "$content" '{content: $content}')
+          curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
+
   # Pushes/merges made with the built-in GITHUB_TOKEN deliberately don't
   # trigger other workflows (GitHub's anti-recursion rule) — so the merges
   # above land on master but never fire flakehub-publish-auto.yml's
@@ -291,13 +350,14 @@ jobs:
   # can end up permanently invisible behind an old tag. See
   # flakehub-publish-auto.yml for the full story.
   flakehub-publish:
-    needs: [update-keka, update-hipixel, update-mist, update-supacode]
+    needs: [update-keka, update-hipixel, update-mist, update-supacode, update-cmux]
     if: |
       always() &&
       (needs.update-keka.outputs.changed == 'true' ||
        needs.update-hipixel.outputs.changed == 'true' ||
        needs.update-mist.outputs.changed == 'true' ||
-       needs.update-supacode.outputs.changed == 'true')
+       needs.update-supacode.outputs.changed == 'true' ||
+       needs.update-cmux.outputs.changed == 'true')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
