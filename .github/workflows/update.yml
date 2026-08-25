@@ -81,22 +81,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
 
-      # Always reports — success (PR merged or nothing to do) or failure — so a
-      # silent breakage upstream (e.g. nix-update can't parse a new release format)
-      # doesn't go unnoticed for weeks.
+      # Only reports on failure — a silent breakage upstream (e.g. nix-update
+      # can't parse a new release format) shouldn't go unnoticed for weeks,
+      # but a routine "up to date" or "bumped" run doesn't need a ping.
       - name: Report to Discord
-        if: always()
+        if: failure()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ "${{ job.status }}" != "success" ]; then
-            content="❌ **nix-packages: keka update check failed** — see [run details]($RUN_URL)"
-          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
-            content="📦 **keka bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
-          else
-            content="✅ **keka is up to date** — nothing to do this run."
-          fi
+          content="❌ **nix-packages: keka update check failed** — see [run details]($RUN_URL)"
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
 
@@ -145,18 +139,12 @@ jobs:
         run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
 
       - name: Report to Discord
-        if: always()
+        if: failure()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ "${{ job.status }}" != "success" ]; then
-            content="❌ **nix-packages: hipixel update check failed** — see [run details]($RUN_URL)"
-          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
-            content="📦 **hipixel bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
-          else
-            content="✅ **hipixel is up to date** — nothing to do this run."
-          fi
+          content="❌ **nix-packages: hipixel update check failed** — see [run details]($RUN_URL)"
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
 
@@ -205,18 +193,12 @@ jobs:
         run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
 
       - name: Report to Discord
-        if: always()
+        if: failure()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ "${{ job.status }}" != "success" ]; then
-            content="❌ **nix-packages: mist update check failed** — see [run details]($RUN_URL)"
-          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
-            content="📦 **mist bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
-          else
-            content="✅ **mist is up to date** — nothing to do this run."
-          fi
+          content="❌ **nix-packages: mist update check failed** — see [run details]($RUN_URL)"
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
 
@@ -264,18 +246,12 @@ jobs:
         run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
 
       - name: Report to Discord
-        if: always()
+        if: failure()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ "${{ job.status }}" != "success" ]; then
-            content="❌ **nix-packages: supacode update check failed** — see [run details]($RUN_URL)"
-          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
-            content="📦 **supacode bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
-          else
-            content="✅ **supacode is up to date** — nothing to do this run."
-          fi
+          content="❌ **nix-packages: supacode update check failed** — see [run details]($RUN_URL)"
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
 
@@ -287,10 +263,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v14
 
+      # Upstream publishes far more than stable GUI releases on
+      # manaflow-ai/cmux: pr<N>-regression-<hash> test builds (no macOS
+      # asset attached, which is what made nix-update 404 on 2026-08-25),
+      # a rolling `nightly` tag, and separate `cmux-tui-vX.Y.Z` releases
+      # for a different artifact — all pushed frequently enough that they
+      # flood the last ~10 entries of the releases.atom feed nix-update
+      # reads by default, burying the actual `vX.Y.Z` GUI releases.
+      # --use-github-releases switches to the paginated Releases API
+      # (up to 1000 entries) so real releases stay reachable, and
+      # --version-regex restricts candidates to `vX.Y.Z` tags so the
+      # test/nightly/tui ones are never picked even when they're newest.
       - name: Run nix-update
         id: nix-update
         run: |
-          nix run nixpkgs#nix-update -- cmux --flake --build
+          nix run nixpkgs#nix-update -- cmux --flake --build --use-github-releases --version-regex '^v(\d+\.\d+\.\d+)$'
           if git diff --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
@@ -323,18 +310,12 @@ jobs:
         run: gh pr merge --squash --delete-branch "${{ steps.cpr.outputs.pull-request-number }}"
 
       - name: Report to Discord
-        if: always()
+        if: failure()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ "${{ job.status }}" != "success" ]; then
-            content="❌ **nix-packages: cmux update check failed** — see [run details]($RUN_URL)"
-          elif [ "${{ steps.nix-update.outputs.changed }}" = "true" ]; then
-            content="📦 **cmux bumped** — PR #${{ steps.cpr.outputs.pull-request-number }} auto-merged: ${{ steps.cpr.outputs.pull-request-url }}"
-          else
-            content="✅ **cmux is up to date** — nothing to do this run."
-          fi
+          content="❌ **nix-packages: cmux update check failed** — see [run details]($RUN_URL)"
           payload=$(jq -n --arg content "$content" '{content: $content}')
           curl -sf -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
 
