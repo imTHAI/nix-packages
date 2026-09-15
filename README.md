@@ -15,7 +15,7 @@ Rather than pile up local overlay overrides or wait on someone else's schedule, 
 | [`hipixel`](./pkgs/hipixel) | `0.4.3` | not in nixpkgs | niche macOS-only app, not worth the nixpkgs review cycle |
 | [`mist`](./pkgs/mist) | `0.40` | [`0.30`](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/mi/mist/package.nix) | several releases behind, no auto-update mechanism upstream |
 | [`supacode`](./pkgs/supacode) | `0.10.8` | not in nixpkgs | frequent releases during beta phase, not suited for nixpkgs review cycle |
-| [`cmux`](./pkgs/cmux) | `0.64.22` | not in nixpkgs | frequent releases, macOS-only, no nixpkgs packaging yet |
+| [`cmux`](./pkgs/cmux) | `0.64.23` | not in nixpkgs | frequent releases, macOS-only, no nixpkgs packaging yet |
 
 ## 🚀 Usage
 
