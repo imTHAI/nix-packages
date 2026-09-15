@@ -2,11 +2,11 @@ name: Update packages
 
 on:
   schedule:
-    # Day-of-month step (*/2) rather than a day-count interval, so this
-    # fires on odd days (~every 2 days; occasionally 1 or 3 days apart
-    # across a month boundary). Public repo => Actions minutes are free,
-    # including macOS runners, so the tighter cadence costs nothing.
-    - cron: "0 6 */2 * *"
+    # Daily rather than every ~2 days: a same-day upstream release (e.g.
+    # cmux 0.64.23 on 2026-09-14) could otherwise sit unpicked-up until the
+    # next odd-day run, up to ~48h later. Public repo => Actions minutes are
+    # free, including macOS runners, so the tighter cadence costs nothing.
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 # The repo default GITHUB_TOKEN is read-only; create-pull-request needs
