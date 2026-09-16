@@ -7,11 +7,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "cmux";
-  version = "0.64.23";
+  version = "0.64.24";
 
   src = fetchurl {
     url = "https://github.com/manaflow-ai/cmux/releases/download/v${finalAttrs.version}/cmux-macos.dmg";
-    hash = "sha256-gKNXLLrJNxSf8WOHcZUhBf6daFGYOV/98q3fkvUlqb0=";
+    hash = "sha256-W9pcqZepNp3kW+bjT+nG57VbRM1C0Heext0Uw5uDCSQ=";
   };
 
   # Upstream's dmg is APFS-formatted, which undmg (HFS+ only) can't read.
