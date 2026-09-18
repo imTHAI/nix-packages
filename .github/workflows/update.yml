@@ -2,11 +2,13 @@ name: Update packages
 
 on:
   schedule:
-    # Daily rather than every ~2 days: a same-day upstream release (e.g.
-    # cmux 0.64.23 on 2026-09-14) could otherwise sit unpicked-up until the
-    # next odd-day run, up to ~48h later. Public repo => Actions minutes are
-    # free, including macOS runners, so the tighter cadence costs nothing.
-    - cron: "0 6 * * *"
+    # Every 6h rather than daily: GitHub defers scheduled runs on free
+    # runners by several hours (observed 4-5h — runs requested at 06:00 UTC
+    # actually fired ~10:30), so a daily cadence stretched the gap between an
+    # upstream release and its bump to 24-30h. Four attempts a day keeps that
+    # under ~12h. Public repo => Actions minutes are free, macOS runners
+    # included, so the tighter cadence costs nothing.
+    - cron: "0 */6 * * *"
   workflow_dispatch: {}
 
 # The repo default GITHUB_TOKEN is read-only; create-pull-request needs
