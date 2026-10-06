@@ -27,13 +27,13 @@ jobs:
     outputs:
       changed: ${{ steps.nix-update.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # DeterminateSystems installer handles macOS runners correctly —
       # cachix/install-nix-action fails with eDSRecordAlreadyExists because
       # the GitHub macOS image already has _nixbld users. DS installer also
       # enables flakes by default.
-      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: DeterminateSystems/nix-installer-action@v23
 
       # nix-update reads src.url / version straight from the derivation, fetches
       # the latest GitHub release, recomputes the hash and rewrites the file.
@@ -68,7 +68,7 @@ jobs:
           # Target only the keka table row; replace the first backtick-version on that line.
           sed -i '' "/pkgs\/keka/s/\`[0-9][0-9.]*\`/\`${NEW_VERSION}\`/" README.md
 
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v8
         if: steps.nix-update.outputs.changed == 'true'
         id: cpr
         with:
@@ -110,8 +110,8 @@ jobs:
     outputs:
       changed: ${{ steps.nix-update.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/nix-installer-action@v23
 
       - name: Run nix-update
         id: nix-update
@@ -131,7 +131,7 @@ jobs:
           NEW_VERSION=$(grep -m1 'version = ' pkgs/hipixel/package.nix | grep -o '"[^"]*"' | tr -d '"')
           sed -i '' "/pkgs\/hipixel/s/\`[0-9][0-9.]*\`/\`${NEW_VERSION}\`/" README.md
 
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v8
         if: steps.nix-update.outputs.changed == 'true'
         id: cpr
         with:
@@ -166,8 +166,8 @@ jobs:
     outputs:
       changed: ${{ steps.nix-update.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/nix-installer-action@v23
 
       - name: Run nix-update
         id: nix-update
@@ -187,7 +187,7 @@ jobs:
           NEW_VERSION=$(grep -m1 'version = ' pkgs/mist/package.nix | grep -o '"[^"]*"' | tr -d '"')
           sed -i '' "/pkgs\/mist/s/\`[0-9][0-9.]*\`/\`${NEW_VERSION}\`/" README.md
 
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v8
         if: steps.nix-update.outputs.changed == 'true'
         id: cpr
         with:
@@ -221,8 +221,8 @@ jobs:
     outputs:
       changed: ${{ steps.nix-update.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/nix-installer-action@v23
 
       - name: Run nix-update
         id: nix-update
@@ -242,7 +242,7 @@ jobs:
           NEW_VERSION=$(grep -m1 'version = ' pkgs/supacode/package.nix | grep -o '"[^"]*"' | tr -d '"')
           sed -i '' "/pkgs\/supacode/s/\`[0-9][0-9.]*\`/\`${NEW_VERSION}\`/" README.md
 
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v8
         if: steps.nix-update.outputs.changed == 'true'
         id: cpr
         with:
@@ -276,8 +276,8 @@ jobs:
     outputs:
       changed: ${{ steps.nix-update.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/nix-installer-action@v23
 
       # Upstream publishes far more than stable GUI releases on
       # manaflow-ai/cmux: pr<N>-regression-<hash> test builds (no macOS
@@ -308,7 +308,7 @@ jobs:
           NEW_VERSION=$(grep -m1 'version = ' pkgs/cmux/package.nix | grep -o '"[^"]*"' | tr -d '"')
           sed -i '' "/pkgs\/cmux/s/\`[0-9][0-9.]*\`/\`${NEW_VERSION}\`/" README.md
 
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v8
         if: steps.nix-update.outputs.changed == 'true'
         id: cpr
         with:
@@ -362,7 +362,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: master
           fetch-depth: 0
