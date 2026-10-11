@@ -6,14 +6,14 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "supacode";
-  version = "0.11.0";
+  version = "0.11.2";
 
   src = fetchzip {
     url = "https://github.com/supabitapp/supacode/releases/download/v${finalAttrs.version}/supacode.app.zip";
     # The zip has two top-level entries (__MACOSX/ and supacode.app/), so
     # fetchzip's default single-root requirement fails without this flag.
     stripRoot = false;
-    hash = "sha256-ajQ88yNUy4FLygKxwnJcU5H8g6ErpHIdOZivxt/ZdJg=";
+    hash = "sha256-XYnefvgL9jkRs1RqqNqYfxVC+7Tw6jqCeAO+w+bk7bo=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
