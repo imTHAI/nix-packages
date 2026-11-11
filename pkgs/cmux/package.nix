@@ -53,8 +53,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     cp -r cmux.app $out/Applications/cmux.app
     /usr/bin/codesign --force --deep --sign - $out/Applications/cmux.app
 
-    # The app ships a dedicated CLI binary separate from the GUI launcher,
-    # same layout as supacode.
+    # The app ships a dedicated CLI binary separate from the GUI launcher.
     makeWrapper $out/Applications/cmux.app/Contents/Resources/bin/cmux \
       $out/bin/cmux
 
