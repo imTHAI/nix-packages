@@ -6,15 +6,15 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "hipixel";
-  version = "0.4.3";
+  version = "0.4.4";
 
   src = fetchurl {
     url = "https://github.com/okooo5km/HiPixel/releases/download/v${finalAttrs.version}/HiPixel-v${finalAttrs.version}.dmg";
-    hash = "sha256-+PIbwLUNZGoW7zrE3VzXRU9zQXDewP7pKxElwFziSo0=";
+    hash = "sha256-O67T8lU0L532bfp5XQpbvt+CsRXBE+QJxLPG6ArgFLs=";
   };
 
-  # `undmg` only reads HFS+ images; this dmg's payload volume is APFS, so
-  # unpack with 7-Zip instead, which understands both.
+  # `undmg` only reads HFS+ images. Upstream has shipped both APFS (<= 0.4.3)
+  # and HFS+ (0.4.4) payloads, so unpack with 7-Zip, which understands both.
   nativeBuildInputs = [ _7zz ];
 
   unpackPhase = ''
@@ -34,8 +34,19 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
+    # The bundle's location inside the extraction depends on the dmg's
+    # filesystem: 7-Zip puts APFS payloads (<= 0.4.3) at the root, but
+    # prefixes HFS+ payloads (0.4.4+) with the volume name
+    # ("HiPixel Installer/HiPixel.app"). Locate it instead of hardcoding
+    # either layout; -prune keeps find from descending into the bundle.
+    app=$(find . -type d -name HiPixel.app -prune -print -quit)
+    if [ -z "$app" ]; then
+      echo "HiPixel.app not found in dmg" >&2
+      exit 1
+    fi
+
     mkdir -p $out/Applications
-    cp -r HiPixel.app $out/Applications/HiPixel.app
+    cp -r "$app" $out/Applications/HiPixel.app
 
     runHook postInstall
   '';
